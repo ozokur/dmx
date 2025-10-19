@@ -12,8 +12,9 @@ import os
 import json
 import usb.core
 import usb.util
+import pygame
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __author__ = "DMX Controller"
 __date__ = "2025-10-18"
 
@@ -180,6 +181,12 @@ class DMXControllerGUI:
         self.debug_mode = tk.BooleanVar(value=False)
         self.stats_enabled = tk.BooleanVar(value=True)
         
+        # Gamepad support
+        self.gamepad = None
+        self.gamepad_thread = None
+        self.gamepad_enabled = tk.BooleanVar(value=False)
+        self.init_gamepad()
+        
         self.create_ui()
         self.load_config()
         
@@ -214,6 +221,25 @@ class DMXControllerGUI:
                     os.remove(os.path.join('logs', old_log))
         except Exception as e:
             print(f"Error cleaning up logs: {e}")
+    
+    def init_gamepad(self):
+        """Initialize gamepad support"""
+        try:
+            pygame.init()
+            pygame.joystick.init()
+            
+            if pygame.joystick.get_count() > 0:
+                self.gamepad = pygame.joystick.Joystick(0)
+                self.gamepad.init()
+                gamepad_name = self.gamepad.get_name()
+                self.logger.info(f"Gamepad detected: {gamepad_name}")
+                self.logger.info(f"Axes: {self.gamepad.get_numaxes()}, Buttons: {self.gamepad.get_numbuttons()}")
+            else:
+                self.logger.warning("No gamepad detected")
+                self.gamepad = None
+        except Exception as e:
+            self.logger.error(f"Gamepad initialization error: {e}")
+            self.gamepad = None
     
     def load_config(self):
         """Load saved configuration"""
@@ -373,6 +399,23 @@ class DMXControllerGUI:
         ttk.Button(action_frame, text="Full Brightness", command=self.full_brightness).pack(side="left", padx=5)
         ttk.Button(action_frame, text="Reposition", command=self.reposition).pack(side="left", padx=5)
         
+        # Gamepad Control
+        gamepad_frame = ttk.LabelFrame(parent, text="🎮 Gamepad Control", padding=10)
+        gamepad_frame.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+        
+        if self.gamepad:
+            gamepad_info = ttk.Label(gamepad_frame, text=f"✅ {self.gamepad.get_name()} detected", foreground="green")
+            gamepad_info.pack(side="left", padx=5)
+            
+            ttk.Checkbutton(gamepad_frame, text="Enable Pan/Tilt Control (Left Stick)", 
+                           variable=self.gamepad_enabled, command=self.toggle_gamepad).pack(side="left", padx=5)
+            
+            self.gamepad_status = ttk.Label(gamepad_frame, text="Status: Disabled", foreground="gray")
+            self.gamepad_status.pack(side="left", padx=10)
+        else:
+            ttk.Label(gamepad_frame, text="❌ No gamepad detected", foreground="red").pack(side="left", padx=5)
+            ttk.Button(gamepad_frame, text="Refresh", command=self.refresh_gamepad).pack(side="left", padx=5)
+        
         # Configure grid weights
         control_frame.columnconfigure(0, weight=1)
         parent.columnconfigure(0, weight=1)
@@ -470,6 +513,91 @@ Retention: Last 10 sessions
             logging.getLogger().setLevel(logging.INFO)
             self.logger.info("Debug mode disabled")
         self.save_config()
+    
+    def toggle_gamepad(self):
+        """Toggle gamepad control"""
+        if self.gamepad_enabled.get():
+            if not self.running:
+                messagebox.showwarning("Warning", "Please connect to UDMX device first!")
+                self.gamepad_enabled.set(False)
+                return
+            
+            self.logger.info("Gamepad pan/tilt control enabled")
+            self.gamepad_status.config(text="Status: Active 🎮", foreground="green")
+            self.start_gamepad_thread()
+        else:
+            self.logger.info("Gamepad pan/tilt control disabled")
+            self.gamepad_status.config(text="Status: Disabled", foreground="gray")
+    
+    def refresh_gamepad(self):
+        """Refresh gamepad detection"""
+        self.init_gamepad()
+        # Recreate UI to show updated status
+        messagebox.showinfo("Refresh", "Gamepad status updated. Please restart the application to see changes.")
+    
+    def start_gamepad_thread(self):
+        """Start gamepad reading thread"""
+        if self.gamepad_thread is None or not self.gamepad_thread.is_alive():
+            self.gamepad_thread = threading.Thread(target=self.gamepad_loop, daemon=True)
+            self.gamepad_thread.start()
+    
+    def gamepad_loop(self):
+        """Main gamepad reading loop"""
+        self.logger.info("Gamepad control loop started")
+        
+        while self.gamepad_enabled.get() and self.running:
+            try:
+                pygame.event.pump()  # Process event queue
+                
+                if self.gamepad:
+                    # Read left analog stick (PS5 DualSense)
+                    # Axis 0: Left stick X (horizontal) -> Pan (Channel 1)
+                    # Axis 1: Left stick Y (vertical) -> Tilt (Channel 2)
+                    
+                    left_x = self.gamepad.get_axis(0)  # -1.0 to 1.0
+                    left_y = self.gamepad.get_axis(1)  # -1.0 to 1.0
+                    
+                    # Apply deadzone (ignore small movements)
+                    deadzone = 0.1
+                    if abs(left_x) < deadzone:
+                        left_x = 0
+                    if abs(left_y) < deadzone:
+                        left_y = 0
+                    
+                    # Convert to DMX values (0-255)
+                    # Map -1.0 to 1.0 -> 0 to 255
+                    pan_value = int((left_x + 1.0) * 127.5)
+                    tilt_value = int((left_y + 1.0) * 127.5)
+                    
+                    # Clamp values
+                    pan_value = max(0, min(255, pan_value))
+                    tilt_value = max(0, min(255, tilt_value))
+                    
+                    # Update DMX channels
+                    self.controller.set_channel(1, pan_value)  # Horizontal
+                    self.controller.set_channel(2, tilt_value)  # Vertical
+                    
+                    # Update GUI sliders (in main thread)
+                    self.root.after(0, lambda: self.update_slider_from_gamepad(1, pan_value))
+                    self.root.after(0, lambda: self.update_slider_from_gamepad(2, tilt_value))
+                
+                time.sleep(0.02)  # 50 Hz update rate
+                
+            except Exception as e:
+                self.logger.error(f"Gamepad loop error: {e}")
+                time.sleep(0.1)
+        
+        self.logger.info("Gamepad control loop stopped")
+    
+    def update_slider_from_gamepad(self, channel, value):
+        """Update slider value from gamepad (called from main thread)"""
+        try:
+            var = getattr(self, f"ch{channel}_var")
+            label = getattr(self, f"ch{channel}_label")
+            var.set(value)
+            label.config(text=str(value))
+        except:
+            pass
     
     def clear_log_display(self):
         """Clear the log display"""
@@ -645,8 +773,18 @@ Retention: Last 10 sessions
     def on_closing(self):
         """Handle window closing"""
         self.logger.info("Application closing")
+        self.gamepad_enabled.set(False)  # Stop gamepad thread
         self.running = False
         self.controller.disconnect()
+        
+        # Cleanup pygame
+        if self.gamepad:
+            try:
+                pygame.joystick.quit()
+                pygame.quit()
+            except:
+                pass
+        
         self.save_config()
         self.logger.info("Goodbye!")
         self.root.destroy()
