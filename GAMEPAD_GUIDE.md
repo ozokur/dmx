@@ -24,10 +24,28 @@ DMX Controller artık **PS5 DualSense** kontrolcüsü ile pan/tilt kontrolünü 
 - **X Ekseni (Yatay)** → Channel 1 (Horizontal Rotation / Pan)
 - **Y Ekseni (Dikey)** → Channel 2 (Vertical Rotation / Tilt)
 
-### Değer Dönüşümü
+### R2 Trigger (Right Trigger)
 ```
-Analog Stick:  -1.0  ←→  0  ←→  +1.0
-DMX Value:       0   ←→ 127 ←→  255
+Not Pressed ═══════════ Fully Pressed
+    0                       255
+```
+
+- **R2 Analog Trigger** → Channel 6 (Dimming / Brightness)
+- Hafif bas = az ışık
+- Tam bas = tam ışık
+
+### Değer Dönüşümü
+
+**Analog Stick (Pan/Tilt):**
+```
+Analog Value:  -1.0  ←→  0.0  ←→  +1.0
+DMX Value:       0   ←→  127  ←→   255
+```
+
+**R2 Trigger (Dimmer):**
+```
+Trigger Value: -1.0 (not pressed) ←→ +1.0 (fully pressed)
+DMX Value:       0  (dark)        ←→  255  (full brightness)
 ```
 
 ## 📦 Kurulum

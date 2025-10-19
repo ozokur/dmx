@@ -407,7 +407,7 @@ class DMXControllerGUI:
             gamepad_info = ttk.Label(gamepad_frame, text=f"✅ {self.gamepad.get_name()} detected", foreground="green")
             gamepad_info.pack(side="left", padx=5)
             
-            ttk.Checkbutton(gamepad_frame, text="Enable Pan/Tilt Control (Left Stick)", 
+            ttk.Checkbutton(gamepad_frame, text="Enable Control (Left Stick: Pan/Tilt, R2: Dimmer)", 
                            variable=self.gamepad_enabled, command=self.toggle_gamepad).pack(side="left", padx=5)
             
             self.gamepad_status = ttk.Label(gamepad_frame, text="Status: Disabled", foreground="gray")
@@ -553,9 +553,13 @@ Retention: Last 10 sessions
                     # Read left analog stick (PS5 DualSense)
                     # Axis 0: Left stick X (horizontal) -> Pan (Channel 1)
                     # Axis 1: Left stick Y (vertical) -> Tilt (Channel 2)
+                    # Axis 5: R2 trigger -> Dimming (Channel 6)
                     
                     left_x = self.gamepad.get_axis(0)  # -1.0 to 1.0
                     left_y = self.gamepad.get_axis(1)  # -1.0 to 1.0
+                    
+                    # Read R2 trigger (Axis 5 on PS5 DualSense)
+                    r2_trigger = self.gamepad.get_axis(5) if self.gamepad.get_numaxes() > 5 else -1.0
                     
                     # Apply deadzone (ignore small movements)
                     deadzone = 0.1
@@ -569,17 +573,23 @@ Retention: Last 10 sessions
                     pan_value = int((left_x + 1.0) * 127.5)
                     tilt_value = int((left_y + 1.0) * 127.5)
                     
+                    # R2 trigger: -1.0 (not pressed) to +1.0 (fully pressed) -> 0 to 255
+                    dimmer_value = int((r2_trigger + 1.0) * 127.5)
+                    
                     # Clamp values
                     pan_value = max(0, min(255, pan_value))
                     tilt_value = max(0, min(255, tilt_value))
+                    dimmer_value = max(0, min(255, dimmer_value))
                     
                     # Update DMX channels
                     self.controller.set_channel(1, pan_value)  # Horizontal
                     self.controller.set_channel(2, tilt_value)  # Vertical
+                    self.controller.set_channel(6, dimmer_value)  # Dimming (R2)
                     
                     # Update GUI sliders (in main thread)
-                    self.root.after(0, lambda: self.update_slider_from_gamepad(1, pan_value))
-                    self.root.after(0, lambda: self.update_slider_from_gamepad(2, tilt_value))
+                    self.root.after(0, lambda pv=pan_value: self.update_slider_from_gamepad(1, pv))
+                    self.root.after(0, lambda tv=tilt_value: self.update_slider_from_gamepad(2, tv))
+                    self.root.after(0, lambda dv=dimmer_value: self.update_slider_from_gamepad(6, dv))
                 
                 time.sleep(0.02)  # 50 Hz update rate
                 
