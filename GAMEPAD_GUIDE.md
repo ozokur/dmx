@@ -24,6 +24,16 @@ DMX Controller artık **PS5 DualSense** kontrolcüsü ile pan/tilt kontrolünü 
 - **X Ekseni (Yatay)** → Channel 1 (Horizontal Rotation / Pan)
 - **Y Ekseni (Dikey)** → Channel 2 (Vertical Rotation / Tilt)
 
+### L2 Trigger (Left Trigger)
+```
+Not Pressed ═══════════ Fully Pressed
+    0                       249 (max)
+```
+
+- **L2 Analog Trigger** → Channel 5 (Strobe Speed)
+- Hafif bas = yavaş strobe
+- Tam bas = hızlı strobe (max 249)
+
 ### R2 Trigger (Right Trigger)
 ```
 Not Pressed ═══════════ Fully Pressed
@@ -42,11 +52,30 @@ Analog Value:  -1.0  ←→  0.0  ←→  +1.0
 DMX Value:       0   ←→  127  ←→   255
 ```
 
+**L2 Trigger (Strobe):**
+```
+Trigger Value: -1.0 (not pressed) ←→ +1.0 (fully pressed)
+DMX Value:       0  (no strobe)   ←→  249  (max strobe speed)
+```
+
 **R2 Trigger (Dimmer):**
 ```
 Trigger Value: -1.0 (not pressed) ←→ +1.0 (fully pressed)
 DMX Value:       0  (dark)        ←→  255  (full brightness)
 ```
+
+### Face Buttons (Color Control)
+```
+X Button     → Channel 3 = 5
+Square Button → Channel 3 = 18
+Circle Button → Channel 3 = 34
+```
+
+- **Face Buttons** → Channel 3 (Color selection)
+- **Toggle behavior**: Değer başka butona basılana kadar kalır
+- X → Kırmızı renk tonu
+- Square → Yeşil renk tonu
+- Circle → Mavi renk tonu
 
 ## 📦 Kurulum
 

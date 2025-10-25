@@ -2,6 +2,8 @@
 
 A Python-based DMX controller application for controlling DMX devices via UDMX interface.
 
+**Developed by hilminoe**
+
 > 🇹🇷 **Türkçe Kullanıcılar**: [HIZLI_BASLANGIC.md](HIZLI_BASLANGIC.md) dosyasına bakın.
 
 ## Features
@@ -195,7 +197,7 @@ For detailed debugging information, see [DEBUG_GUIDE.md](DEBUG_GUIDE.md).
 
 ## Technical Details
 
-- **Version:** 1.1.0
+- **Version:** 1.3.0
 - **Protocol:** USB direct (no serial)
 - **Update Rate:** ~40 Hz
 - **DMX Universe:** 512 channels

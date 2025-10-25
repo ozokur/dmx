@@ -14,9 +14,10 @@ import usb.core
 import usb.util
 import pygame
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __author__ = "DMX Controller"
 __date__ = "2025-10-18"
+__developer__ = "by hilminoe"
 
 # UDMX Device IDs
 UDMX_DEVICES = [
@@ -407,7 +408,7 @@ class DMXControllerGUI:
             gamepad_info = ttk.Label(gamepad_frame, text=f"✅ {self.gamepad.get_name()} detected", foreground="green")
             gamepad_info.pack(side="left", padx=5)
             
-            ttk.Checkbutton(gamepad_frame, text="Enable Control (Left Stick: Pan/Tilt, R2: Dimmer)", 
+            ttk.Checkbutton(gamepad_frame, text="Enable Control (Stick: Pan/Tilt, L2: Strobe, R2: Dim, X/□/○: Color)", 
                            variable=self.gamepad_enabled, command=self.toggle_gamepad).pack(side="left", padx=5)
             
             self.gamepad_status = ttk.Label(gamepad_frame, text="Status: Disabled", foreground="gray")
@@ -561,6 +562,27 @@ Retention: Last 10 sessions
                     # Read R2 trigger (Axis 5 on PS5 DualSense)
                     r2_trigger = self.gamepad.get_axis(5) if self.gamepad.get_numaxes() > 5 else -1.0
                     
+                    # Read L2 trigger (Axis 4 on PS5 DualSense)
+                    l2_trigger = self.gamepad.get_axis(4) if self.gamepad.get_numaxes() > 4 else -1.0
+                    
+                    # Read face buttons (PS5 DualSense)
+                    # Button 0: X -> Color value 5
+                    # Button 2: Square -> Color value 18  
+                    # Button 1: Circle -> Color value 34
+                    x_button = self.gamepad.get_button(0)
+                    square_button = self.gamepad.get_button(2)
+                    circle_button = self.gamepad.get_button(1)
+                    
+                    # Handle button presses for Channel 3 (Color)
+                    if x_button:
+                        color_value = 5
+                    elif square_button:
+                        color_value = 18
+                    elif circle_button:
+                        color_value = 34
+                    else:
+                        color_value = self.controller.dmx_data[2]  # Keep current value
+                    
                     # Apply deadzone (ignore small movements)
                     deadzone = 0.1
                     if abs(left_x) < deadzone:
@@ -576,19 +598,27 @@ Retention: Last 10 sessions
                     # R2 trigger: -1.0 (not pressed) to +1.0 (fully pressed) -> 0 to 255
                     dimmer_value = int((r2_trigger + 1.0) * 127.5)
                     
+                    # L2 trigger: -1.0 (not pressed) to +1.0 (fully pressed) -> 0 to 249 (max)
+                    strobe_value = int((l2_trigger + 1.0) * 124.5)  # Max 249
+                    
                     # Clamp values
                     pan_value = max(0, min(255, pan_value))
                     tilt_value = max(0, min(255, tilt_value))
                     dimmer_value = max(0, min(255, dimmer_value))
+                    strobe_value = max(0, min(249, strobe_value))  # Max 249
                     
                     # Update DMX channels
                     self.controller.set_channel(1, pan_value)  # Horizontal
                     self.controller.set_channel(2, tilt_value)  # Vertical
+                    self.controller.set_channel(3, color_value)  # Color (buttons)
+                    self.controller.set_channel(5, strobe_value)  # Strobe (L2)
                     self.controller.set_channel(6, dimmer_value)  # Dimming (R2)
                     
                     # Update GUI sliders (in main thread)
                     self.root.after(0, lambda pv=pan_value: self.update_slider_from_gamepad(1, pv))
                     self.root.after(0, lambda tv=tilt_value: self.update_slider_from_gamepad(2, tv))
+                    self.root.after(0, lambda cv=color_value: self.update_slider_from_gamepad(3, cv))
+                    self.root.after(0, lambda sv=strobe_value: self.update_slider_from_gamepad(5, sv))
                     self.root.after(0, lambda dv=dimmer_value: self.update_slider_from_gamepad(6, dv))
                 
                 time.sleep(0.02)  # 50 Hz update rate

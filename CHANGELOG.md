@@ -89,6 +89,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kernel driver detachment for Linux compatibility
 - Device cleanup with proper resource disposal
 
+## [1.3.0] - 2025-10-18
+
+### Added
+- **PS5 DualSense gamepad controls** (by hilminoe)
+  - Face buttons for color control (Channel 3)
+    - X button → Color value 5
+    - Square button → Color value 18
+    - Circle button → Color value 34
+  - L2 trigger for strobe control (Channel 5)
+    - Analog control with max value 249
+    - Smooth strobe speed adjustment
+  - Enhanced gamepad support with multiple simultaneous controls
+- Real-time GUI slider synchronization for all gamepad inputs
+- Updated checkbox label to show all active controls
+- Button state display in test script
+
+### Technical
+- Improved gamepad loop with color value persistence
+- Lambda capture fixes for GUI updates
+- Enhanced test_gamepad.py with button and trigger display
+- Documentation updates in GAMEPAD_GUIDE.md
+
+### Credits
+Developed by **hilminoe**
+
 ## [Unreleased]
 
 ### Planned Features

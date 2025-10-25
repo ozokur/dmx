@@ -59,17 +59,43 @@ def test_gamepad():
             left_y = gamepad.get_axis(1) if gamepad.get_numaxes() > 1 else 0
             right_x = gamepad.get_axis(2) if gamepad.get_numaxes() > 2 else 0
             right_y = gamepad.get_axis(3) if gamepad.get_numaxes() > 3 else 0
+            l2_trigger = gamepad.get_axis(4) if gamepad.get_numaxes() > 4 else -1.0
             r2_trigger = gamepad.get_axis(5) if gamepad.get_numaxes() > 5 else -1.0
+            
+            # Read face buttons
+            x_btn = gamepad.get_button(0) if gamepad.get_numbuttons() > 0 else 0
+            square_btn = gamepad.get_button(2) if gamepad.get_numbuttons() > 2 else 0
+            circle_btn = gamepad.get_button(1) if gamepad.get_numbuttons() > 1 else 0
             
             # Convert to DMX values
             pan_dmx = int((left_x + 1.0) * 127.5)
             tilt_dmx = int((left_y + 1.0) * 127.5)
+            strobe_dmx = int((l2_trigger + 1.0) * 124.5)  # Max 249
+            strobe_dmx = max(0, min(249, strobe_dmx))
             dimmer_dmx = int((r2_trigger + 1.0) * 127.5)
             
+            # Calculate color value from buttons
+            if x_btn:
+                color_dmx = 5
+            elif square_btn:
+                color_dmx = 18
+            elif circle_btn:
+                color_dmx = 34
+            else:
+                color_dmx = 0
+            
             # Display
+            buttons_status = ""
+            if x_btn:
+                buttons_status = "X"
+            elif square_btn:
+                buttons_status = "Square"
+            elif circle_btn:
+                buttons_status = "Circle"
+            
             print(f"\rLeft Stick - X: {left_x:+.3f} Y: {left_y:+.3f}  |  "
-                  f"R2: {r2_trigger:+.3f}  |  "
-                  f"DMX - Pan: {pan_dmx:3d} Tilt: {tilt_dmx:3d} Dim: {dimmer_dmx:3d}  ", end='')
+                  f"L2: {l2_trigger:+.3f} R2: {r2_trigger:+.3f}  |  Buttons: {buttons_status:6s}  |  "
+                  f"DMX - Pan: {pan_dmx:3d} Tilt: {tilt_dmx:3d} Color: {color_dmx:3d} Strobe: {strobe_dmx:3d} Dim: {dimmer_dmx:3d}  ", end='')
             
             time.sleep(0.05)
             
